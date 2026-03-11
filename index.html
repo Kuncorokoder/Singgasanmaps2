@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shooting Map — Singgasana Seni Surabaya</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #0f0e0c;
+    color: #f0ead6;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  header {
+    padding: 10px 20px;
+    background: #131210;
+    border-bottom: 1px solid #2a2820;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .title h1 { font-family: 'Playfair Display', serif; font-size: 15px; color: #f0ead6; }
+  .title p { font-size: 10px; color: #7a7060; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 1px; }
+  .legend { display: flex; gap: 14px; }
+  .leg {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 500; color: #c4b99a;
+    cursor: pointer; padding: 4px 8px; border-radius: 20px;
+    border: 1px solid transparent; transition: all 0.2s; user-select: none;
+  }
+  .leg:hover { background: #1e1c16; border-color: #3a3628; }
+  .leg.off { opacity: 0.35; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .tabs {
+    display: flex; background: #0f0e0c;
+    border-bottom: 1px solid #2a2820; padding: 0 20px; flex-shrink: 0;
+  }
+  .tab {
+    padding: 8px 16px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: #4a4030; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;
+  }
+  .tab:hover { color: #c4b99a; }
+  .tab.active { color: #e8c96a; border-bottom-color: #e8c96a; }
+  .body { display: flex; flex: 1; overflow: hidden; }
+  aside {
+    width: 230px; flex-shrink: 0;
+    background: #131210; border-right: 1px solid #2a2820;
+    overflow-y: auto; z-index: 100;
+  }
+  aside::-webkit-scrollbar { width: 3px; }
+  aside::-webkit-scrollbar-thumb { background: #2a2820; }
+  .grp-head {
+    padding: 10px 14px 6px; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .grp-line { flex: 1; height: 1px; background: #2a2820; }
+  .loc {
+    padding: 6px 14px; display: flex; align-items: flex-start;
+    gap: 8px; cursor: pointer; transition: background 0.15s;
+  }
+  .loc:hover { background: #1a1914; }
+  .loc.active { background: #1e1c16; }
+  .loc-num {
+    width: 17px; height: 17px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #000;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .loc-name { font-size: 11px; font-weight: 600; color: #e0d8c0; line-height: 1.3; }
+  .loc-meta { font-size: 10px; color: #5a5040; margin-top: 1px; }
+  #map { flex: 1; z-index: 1; }
+  .leaflet-control-zoom a { background: #1a1914 !important; color: #c4b99a !important; border-color: #2a2820 !important; }
+  .leaflet-control-zoom a:hover { background: #2a2820 !important; }
+  .leaflet-control-attribution { background: rgba(15,14,12,0.8) !important; color: #3a3628 !important; font-size: 9px; }
+  .leaflet-control-attribution a { color: #5a5040 !important; }
+  .cpin { display: flex; align-items: center; gap: 5px; pointer-events: none; }
+  .cpin-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #000;
+    border: 2px solid rgba(255,255,255,0.7);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.7), 0 0 0 4px rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+  .cpin-label {
+    font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 700;
+    white-space: nowrap;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 8px rgba(0,0,0,1);
+    pointer-events: none;
+  }
+  .leaflet-popup-content-wrapper {
+    background: #1a1914 !important; border: 1px solid #3a3628 !important;
+    border-radius: 8px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.7) !important;
+    color: #f0ead6 !important;
+  }
+  .leaflet-popup-tip { background: #1a1914 !important; }
+  .leaflet-popup-content { margin: 10px 14px !important; font-family: 'DM Sans', sans-serif; }
+  .p-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 4px; }
+  .p-name { font-size: 13px; font-weight: 600; color: #f0ead6; margin-bottom: 2px; }
+  .p-meta { font-size: 11px; color: #7a7060; }
+  .leaflet-popup-close-button { color: #5a5040 !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">
+    <h1>Singgasana Seni Surabaya</h1>
+    <p>Shooting Map · 15–16 Maret 2026</p>
+  </div>
+  <div class="legend">
+    <div class="leg" id="leg-day1" onclick="toggleGroup('day1')">
+      <div class="leg-dot" style="background:#e8c96a"></div> Day 1
+    </div>
+    <div class="leg" id="leg-team1" onclick="toggleGroup('team1')">
+      <div class="leg-dot" style="background:#6ab4e8"></div> Day 2 · Team 1
+    </div>
+    <div class="leg" id="leg-team2" onclick="toggleGroup('team2')">
+      <div class="leg-dot" style="background:#e87a6a"></div> Day 2 · Team 2
+    </div>
+    <div class="leg" id="leg-basecamp" onclick="toggleGroup('basecamp')">
+      <div class="leg-dot" style="background:#b06be8"></div> Basecamp
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="setTab('all', this)">Semua</div>
+  <div class="tab" onclick="setTab('day1', this)">Day 1</div>
+  <div class="tab" onclick="setTab('team1', this)">Day 2 · Team 1</div>
+  <div class="tab" onclick="setTab('team2', this)">Day 2 · Team 2</div>
+</div>
+
+<div class="body">
+  <aside id="sidebar"></aside>
+  <div id="map"></div>
+</div>
+
+<script>
+const COLORS = {
+  day1:     '#e8c96a',
+  team1:    '#6ab4e8',
+  team2:    '#e87a6a',
+  basecamp: '#b06be8'
+};
+
+const GROUP_LABEL = {
+  day1:     'Day 1 — Sabtu 15 Maret',
+  team1:    'Day 2 · Team 1',
+  team2:    'Day 2 · Team 2',
+  basecamp: 'Basecamp'
+};
+
+const DATA = {
+  basecamp: [
+    { name: 'Kampi Hotel',              meta: 'Basecamp · Jl. Taman Apsari',  lat: -7.2644, lng: 112.7432 }
+  ],
+  day1: [
+    { name: 'Kota Lama Surabaya',        meta: 'Pagi · Golden hour',           lat: -7.2363, lng: 112.7373 },
+    { name: 'Jembatan Merah',            meta: 'Pagi · Transit talent',         lat: -7.2368, lng: 112.7384 },
+    { name: 'Stasiun Gubeng',            meta: 'Siang · Heritage facade',       lat: -7.2657, lng: 112.7520 },
+    { name: 'Rumah HOS Tjokroaminoto',   meta: 'Siang · Tutup 15.00',          lat: -7.2525, lng: 112.7378 },
+    { name: 'Rumah Kelahiran Bung Karno',meta: 'Siang · Kawasan Peneleh',      lat: -7.2538, lng: 112.7368 },
+    { name: 'Rumah WR Supratman',        meta: 'Sore · Tutup 15.00',           lat: -7.2506, lng: 112.7540 }
+  ],
+  team1: [
+    { name: 'Pos Bloc',                  meta: 'Pagi · Buka 07.00',            lat: -7.2429, lng: 112.7375 },
+    { name: 'Balai Pemuda',              meta: 'Kondisional',                   lat: -7.2574, lng: 112.7398 },
+    { name: 'Hotel Majapahit',           meta: 'Konfirmasi izin dulu',          lat: -7.2602, lng: 112.7397 },
+    { name: 'Rawon Setan',               meta: 'Siang · Bayar cash',           lat: -7.2592, lng: 112.7352 },
+    { name: 'Lontong Balap Pak Gendut',  meta: 'Siang · Embong Malang',        lat: -7.2589, lng: 112.7348 },
+    { name: 'Rujak Cingur Durasim',      meta: 'Siang · Genteng',              lat: -7.2568, lng: 112.7403 }
+  ],
+  team2: [
+    { name: 'Jembatan Surabaya',         meta: 'Jam 04.00 · Blue hour',        lat: -7.2109, lng: 112.7285 },
+    { name: 'Makam WR Supratman',        meta: 'Pagi',                          lat: -7.2510, lng: 112.7545 },
+    { name: 'Simpang Societe',           meta: 'Pagi',                          lat: -7.2572, lng: 112.7375 },
+    { name: 'Makam Sunan Ampel',         meta: 'Pagi · Tutup kepala',          lat: -7.2299, lng: 112.7425 },
+    { name: 'Sanggar Luthuk',            meta: 'Siang',                         lat: -7.2365, lng: 112.7370 },
+    { name: 'Pelabuhan Kalimas',         meta: 'Pagi · Kapal Pinisi',          lat: -7.1997, lng: 112.7346 },
+    { name: 'Menara Syahbandar',         meta: 'Pagi · Kawasan Kalimas',       lat: -7.2015, lng: 112.7355 },
+    { name: 'Kembang Jepun',             meta: 'Siang · Pecinan',              lat: -7.2349, lng: 112.7400 },
+    { name: 'Kios Rempah-rempah',        meta: 'Siang · Insert shot',          lat: -7.2355, lng: 112.7412 }
+  ]
+};
+
+// Tab config: which groups to show on map + in sidebar
+const TAB_CONFIG = {
+  all:   { layers: ['day1','team1','team2','basecamp'], sidebar: ['basecamp','day1','team1','team2'], fly: { center: [-7.225, 112.738], zoom: 13 } },
+  day1:  { layers: ['day1','basecamp'],                 sidebar: ['basecamp','day1'],                 fly: { center: [-7.248, 112.742], zoom: 13 } },
+  team1: { layers: ['team1','basecamp'],                sidebar: ['basecamp','team1'],                fly: { center: [-7.248, 112.737], zoom: 14 } },
+  team2: { layers: ['team2','basecamp'],                sidebar: ['basecamp','team2'],                fly: { center: [-7.215, 112.736], zoom: 13 } }
+};
+
+// Init map
+const map = L.map('map', { center: [-7.230, 112.738], zoom: 14 });
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(map);
+
+// Build layer groups
+const layerGroups = {};
+const visible = { day1: true, team1: true, team2: true, basecamp: true };
+
+function makeMarker(group, loc, idx) {
+  const color = COLORS[group];
+  const isBase = group === 'basecamp';
+
+  const html = isBase
+    ? `<div class="cpin">
+        <div class="cpin-dot" style="background:${color}; border-radius:5px; font-size:13px; line-height:1;">🏨</div>
+        <span class="cpin-label" style="color:${color}; font-size:12px;">${loc.name}</span>
+       </div>`
+    : `<div class="cpin">
+        <div class="cpin-dot" style="background:${color}">${idx + 1}</div>
+        <span class="cpin-label" style="color:${color}">${loc.name}</span>
+       </div>`;
+
+  const icon = L.divIcon({ className: '', html, iconSize: [0,0], iconAnchor: [11,11] });
+  const marker = L.marker([loc.lat, loc.lng], { icon });
+
+  marker.bindPopup(`
+    <div class="p-badge" style="color:${color}">${GROUP_LABEL[group]}</div>
+    <div class="p-name">${loc.name}</div>
+    <div class="p-meta">${loc.meta}</div>
+  `);
+
+  marker.on('click', () => highlightSidebar(group, idx));
+  return marker;
+}
+
+Object.keys(DATA).forEach(group => {
+  layerGroups[group] = L.layerGroup();
+  DATA[group].forEach((loc, i) => makeMarker(group, loc, i).addTo(layerGroups[group]));
+  layerGroups[group].addTo(map);
+});
+
+// Sidebar
+function buildSidebar(groups) {
+  const sb = document.getElementById('sidebar');
+  sb.innerHTML = '';
+
+  groups.forEach(group => {
+    const color = COLORS[group];
+    const sec = document.createElement('div');
+
+    const head = document.createElement('div');
+    head.className = 'grp-head';
+    head.style.color = color;
+    head.innerHTML = `<span>${GROUP_LABEL[group]}</span><div class="grp-line"></div>`;
+    sec.appendChild(head);
+
+    DATA[group].forEach((loc, i) => {
+      const isBase = group === 'basecamp';
+      const item = document.createElement('div');
+      item.className = 'loc';
+      item.id = `loc-${group}-${i}`;
+      item.innerHTML = `
+        <div class="loc-num" style="background:${color}; ${isBase ? 'border-radius:4px; font-size:12px;' : ''}">${isBase ? '🏨' : i + 1}</div>
+        <div>
+          <div class="loc-name">${loc.name}</div>
+          <div class="loc-meta">${loc.meta}</div>
+        </div>`;
+      item.onclick = () => {
+        map.setView([loc.lat, loc.lng], 16);
+        layerGroups[group].eachLayer(l => {
+          if (l.getLatLng && Math.abs(l.getLatLng().lat - loc.lat) < 0.0001) l.openPopup();
+        });
+        highlightSidebar(group, i);
+      };
+      sec.appendChild(item);
+    });
+    sb.appendChild(sec);
+  });
+}
+
+function highlightSidebar(group, idx) {
+  document.querySelectorAll('.loc').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`loc-${group}-${idx}`);
+  if (el) { el.classList.add('active'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+}
+
+// Toggle legend
+function toggleGroup(group) {
+  visible[group] = !visible[group];
+  document.getElementById('leg-' + group).classList.toggle('off', !visible[group]);
+  if (visible[group]) layerGroups[group].addTo(map);
+  else map.removeLayer(layerGroups[group]);
+}
+
+// Tab switch
+let currentTab = 'all';
+
+function setTab(filter, el) {
+  currentTab = filter;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+
+  const cfg = TAB_CONFIG[filter];
+
+  // Update map layers
+  Object.keys(layerGroups).forEach(g => {
+    const shouldShow = cfg.layers.includes(g);
+    if (shouldShow && !map.hasLayer(layerGroups[g])) {
+      layerGroups[g].addTo(map);
+      visible[g] = true;
+      document.getElementById('leg-' + g).classList.remove('off');
+    } else if (!shouldShow && map.hasLayer(layerGroups[g])) {
+      map.removeLayer(layerGroups[g]);
+      visible[g] = false;
+      document.getElementById('leg-' + g).classList.add('off');
+    }
+  });
+
+  buildSidebar(cfg.sidebar);
+  map.flyTo(cfg.fly.center, cfg.fly.zoom, { duration: 0.8 });
+}
+
+// Init
+buildSidebar(TAB_CONFIG['all'].sidebar);
+</script>
+</body>
+</html>
